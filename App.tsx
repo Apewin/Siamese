@@ -173,51 +173,50 @@ export default function App() {
       const studentPart = await fileToGenerativePart(studentFile);
       parts.push(studentPart);
 
-      let prompt = "";
-
       // 2. Add Rubric (Text or File)
+      let rubricContent = "";
       if (rubricMode === 'file' && rubricFile) {
         const rubricPart = await fileToGenerativePart(rubricFile);
         parts.push(rubricPart);
-        
-        prompt = `
-          Role: You are an expert AP Exam Reader.
-          
-          Inputs:
-          1. The first file provided is the STUDENT'S RESPONSE (Handwritten or Digital).
-          2. The second file provided is the RUBRIC / STANDARD ANSWER KEY.
-          
-          Context:
-          - Question Prompt: "${question}"
-          
-          Task:
-          1. Transcribe the Student's Response into text.
-          2. Analyze the Student's Response against the criteria shown in the Rubric/Key file.
-          3. Grade strictly based on the evidence in the student's response.
-        `;
+        rubricContent = "Refer to the second image/PDF provided as the Scoring Guidelines.";
       } else {
-        prompt = `
-          Role: You are an expert AP Exam Reader.
-          
-          Inputs:
-          1. The file provided is the STUDENT'S RESPONSE.
-          
-          Context:
-          - Question Prompt: "${question}"
-          - Grading Rubric: "${rubricText}"
-          
-          Task:
-          1. Transcribe the Student's Response.
-          2. Grade strictly based on the provided Rubric text.
-        `;
+        rubricContent = rubricText;
       }
+
+      // Strict AP Persona Prompt
+      const prompt = `
+        System Role: You are a strict, objective AP Exam Reader authorized by the College Board. Your sole purpose is to grade student responses against a specific Scoring Guideline (Rubric) with zero bias or hallucination.
+
+        Task: Evaluate the provided "Student Response" based strictly on the provided "Scoring Guidelines" for the given "Question".
+
+        Operational Rules (Strict Adherence Required):
+        1. Literal Keyword Matching: Do not infer intent. Points are awarded ONLY if the student explicitly states the required concepts, keywords, or logical steps defined in the rubric. "Close enough" is 0 points.
+        2. Differentiation of Task Verbs:
+           - "Identify": Award points for the correct answer only; explanations are irrelevant.
+           - "Explain/Justify": The correct answer alone gets 0 points. A logical linkage (premise → reasoning → conclusion) is required.
+        3. Contradiction Penalty: If a student provides the correct answer but follows it with incorrect reasoning or a contradictory statement, award 0 points.
+        4. Units & Formatting: For Math/Science subjects, deduct points if units are missing or incorrect where the rubric demands them.
+        5. Binary Scoring: Unless the rubric explicitly defines partial credit, treat every decision as Binary (0 or 1).
+        6. Evidence Requirement: You must cite the specific phrase in the Rubric that justifies every point awarded or denied.
+
+        Input Data:
+        [Question Prompt]: "${question}"
+        [Scoring Guidelines]: "${rubricContent}"
+        [Student Response]: (See attached image/PDF)
+
+        Output Requirement:
+        Output strictly in JSON format matching the provided schema. 
+        - 'recognizedText': Transcribe the student's handwriting exactly.
+        - 'scoreBreakdown': List every rubric criteria and the points awarded (0 or 1) vs max points.
+        - 'feedback': Provide critical feedback on exact errors (e.g., "Failed to label X-axis").
+      `;
 
       const responseSchema: Schema = {
         type: Type.OBJECT,
         properties: {
           studentName: { type: Type.STRING, description: "Name of student if found, else 'Student'" },
           recognizedText: { type: Type.STRING, description: "Transcription of student response" },
-          feedback: { type: Type.STRING, description: "Detailed feedback explaining the score" },
+          feedback: { type: Type.STRING, description: "Critical feedback explaining the score and specific errors." },
           totalScore: { type: Type.NUMBER, description: "Total points awarded" },
           maxScore: { type: Type.NUMBER, description: "Total possible points" },
           scoreBreakdown: {
@@ -225,8 +224,8 @@ export default function App() {
             items: {
               type: Type.OBJECT,
               properties: {
-                description: { type: Type.STRING, description: "Rubric criterion" },
-                pointsAwarded: { type: Type.NUMBER, description: "Points given" },
+                description: { type: Type.STRING, description: "Rubric criterion description" },
+                pointsAwarded: { type: Type.NUMBER, description: "Points given (usually 0 or 1)" },
                 maxPoints: { type: Type.NUMBER, description: "Max points for this item" },
               },
               required: ["description", "pointsAwarded", "maxPoints"],
@@ -242,7 +241,7 @@ export default function App() {
           parts: [...parts, { text: prompt }],
         },
         config: {
-          systemInstruction: "You are a strict and precise grader. Always verify OCR accuracy before grading.",
+          systemInstruction: "You are a strict, objective AP Exam Reader. Grade with zero bias.",
           responseMimeType: "application/json",
           responseSchema: responseSchema,
           thinkingConfig: { thinkingBudget: 1024 },
@@ -296,16 +295,6 @@ export default function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <img 
-          src="./siamese.png" 
-          alt="Siamese Cat Logo" 
-          className="app-logo" 
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = "https://placekitten.com/200/200";
-            target.onerror = null;
-          }}
-        />
         <h1>Siamese <span>AI Grader</span></h1>
         <p>Upload answers and rubrics to grade instantly.</p>
         
