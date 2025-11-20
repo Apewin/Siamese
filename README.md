@@ -1,4 +1,10 @@
-# Siamese AI Grader 🐱
+
+<img width="1052" height="1216" alt="ed178d37fc1c9798966148fb6813dd32" src="https://github.com/user-attachments/assets/63e28be5-1c7e-4480-9e16-4656900d39a4" />
+<img width="1066" height="906" alt="5158d294f1400817aa1079f53bbc8303" src="https://github.com/user-attachments/assets/f8d7af6e-4fa6-4720-8270-23a19a936e68" />
+
+
+# Siamese ![Uploading ed178d37fc1c9798966148fb6813dd32.png…]()
+AI Grader 🐱
 
 **Siamese AI Grader** is a powerful, client-side React application that uses **Google Gemini** and **Alibaba Qwen-VL** models to grade handwritten AP Free Response Questions (FRQs). It features a "No-Backend" architecture, running entirely in the browser for maximum privacy and speed.
 
